@@ -5,22 +5,22 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Questionario extends Model {
     static associate(models) {
-      // Um Questionario pode ter muitas Perguntas
-      Questionario.hasMany(models.Pergunta, {
-        foreignKey: 'questionario_id',
-        as: 'perguntas',
-      });
+      // define association here
+      Questionario.belongsTo(models.Usuario, { foreignKey: 'createdBy', as: 'creator' });
+      Questionario.belongsTo(models.Usuario, { foreignKey: 'updatedBy', as: 'updater' });
     }
   }
   Questionario.init({
     titulo: DataTypes.STRING,
     descricao: DataTypes.STRING,
     createdAt: DataTypes.DATE,
-    updatedAt: DataTypes.DATE
+    updatedAt: DataTypes.DATE,
+    createdBy: DataTypes.INTEGER,
+    updatedBy: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'Questionario',
-    tableName: 'questionarios', // Nome da tabela em minúsculas
+    tableName: 'questionarios',
   });
   return Questionario;
 };
