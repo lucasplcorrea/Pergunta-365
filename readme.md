@@ -150,7 +150,3 @@ http://localhost:3000/api-docs
 
 ## 🏅 **Desenvolvido Por**
 - [Lucas Pedro](https://github.com/lucasplcorrea)
-
----
-
-Espero que agora o `README.md` esteja completo e com um toque visual a mais. Podemos começar a codificação a partir do próximo passo!
