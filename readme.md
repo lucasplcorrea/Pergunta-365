@@ -90,8 +90,7 @@ Este é um projeto de enquetes simplificadas onde criadores podem adicionar ques
 
 ### 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/seu-projeto.git
-cd seu-projeto
+git clone https://github.com/lucasplcorrea/Pergunta-365.git
 ```
 
 ### 2. Instale as dependências:
