@@ -5,7 +5,11 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Questionario extends Model {
     static associate(models) {
-      // define association here
+      // Um Questionario pode ter muitas Perguntas
+      Questionario.hasMany(models.Pergunta, {
+        foreignKey: 'questionario_id',
+        as: 'perguntas',
+      });
     }
   }
   Questionario.init({
