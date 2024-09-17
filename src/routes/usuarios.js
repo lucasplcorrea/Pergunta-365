@@ -7,7 +7,6 @@ const verificaProprioUsuario = require("../middlewares/verificaProprioUsuario");
 const router = express.Router();
 const yup = require("yup");
 
-
 // Validação com Yup (removido o campo sobrenome)
 const usuarioSchema = yup.object({
   nome: yup.string().required(),
@@ -18,10 +17,18 @@ const usuarioSchema = yup.object({
 
 /**
  * @swagger
+ * tags: 
+ *   name: Cadastro e Login
+ *   description: Operações relacionadas a Cadastro e Login de Usuários
+ */
+
+/**
+ * @swagger
  * /usuarios:
  *   post:
  *     summary: Cria um novo usuário
  *     tags: [Cadastro e Login]
+ *     description: Cria um novo usuário com nome, email, senha e permissão. Permissão 2 = Criador, 3 = Estudante.
  *     requestBody:
  *       required: true
  *       content:
@@ -89,6 +96,7 @@ router.post("/", async (req, res) => {
  *   post:
  *     summary: Autentica o usuário e gera um token JWT
  *     tags: [Cadastro e Login]
+ *     description: Autentica o usuário com email e senha e gera um token JWT.
  *     requestBody:
  *       required: true
  *       content:
@@ -135,10 +143,18 @@ router.post("/login", async (req, res) => {
 
 /**
  * @swagger
+ * tags: 
+ *   name: Rota de Usuários
+ *   description: Operações relacionadas a Rotas de Usuários
+ */
+
+/**
+ * @swagger
  * /usuarios:
  *   get:
  *     summary: Lista todos os usuários
  *     tags: [Rota de Usuários]
+ *     description: Lista todos os usuários cadastrados
  *     responses:
  *       200:
  *         description: Sucesso ao listar usuários
@@ -158,6 +174,7 @@ router.get("/", autenticacaoJWT, async (req, res) => {
  *   get:
  *     summary: Obtém um usuário pelo ID
  *     tags: [Rota de Usuários]
+ *     description: Obtém um usuário pelo ID
  *     parameters:
  *       - in: path
  *         name: id
@@ -174,7 +191,7 @@ router.get("/", autenticacaoJWT, async (req, res) => {
  *         description: Erro no servidor
  */
 
-// Obter um usuário pelo ID (autenticado)
+// Obter um usuário pelo ID
 router.get("/:id", autenticacaoJWT, async (req, res) => {
   try {
     const { id } = req.params;
@@ -196,6 +213,7 @@ router.get("/:id", autenticacaoJWT, async (req, res) => {
  *   put:
  *     summary: Atualiza os dados de um usuário
  *     tags: [Rota de Usuários]
+ *     description: Atualiza os dados de um usuário pelo ID (autenticado e verificado se é o próprio usuário)
  *     parameters:
  *       - in: path
  *         name: id
@@ -229,31 +247,33 @@ router.get("/:id", autenticacaoJWT, async (req, res) => {
  *         description: Erro no servidor
  */
 
-
-
 // Atualizar um usuário (autenticado e verificado se é o próprio usuário)
-router.put("/:id", [autenticacaoJWT, verificaProprioUsuario], async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nome, email, senha } = req.body;
+router.put(
+  "/:id",
+  [autenticacaoJWT, verificaProprioUsuario],
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { nome, email, senha } = req.body;
 
-    // Buscar o usuário
-    const usuario = await Usuario.findByPk(id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
+      // Buscar o usuário
+      const usuario = await Usuario.findByPk(id);
+      if (!usuario) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Atualizar usuário
+      if (nome) usuario.nome = nome;
+      if (email) usuario.email = email;
+      if (senha) usuario.senha = await bcrypt.hash(senha, 10);
+
+      await usuario.save();
+      res.json(usuario);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    // Atualizar usuário
-    if (nome) usuario.nome = nome;
-    if (email) usuario.email = email;
-    if (senha) usuario.senha = await bcrypt.hash(senha, 10);
-
-    await usuario.save();
-    res.json(usuario);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
-});
+);
 
 /**
  * @swagger
@@ -261,6 +281,7 @@ router.put("/:id", [autenticacaoJWT, verificaProprioUsuario], async (req, res) =
  *   delete:
  *     summary: Deleta um usuário
  *     tags: [Rota de Usuários]
+ *     description: Deleta um usuário pelo ID (autenticado e verificado se é o próprio usuário)
  *     parameters:
  *       - in: path
  *         name: id
@@ -278,20 +299,24 @@ router.put("/:id", [autenticacaoJWT, verificaProprioUsuario], async (req, res) =
  */
 
 // Deletar um usuário (autenticado e verificado se é o próprio usuário)
-router.delete("/:id", [autenticacaoJWT, verificaProprioUsuario], async (req, res) => {
-  try {
-    const { id } = req.params;
+router.delete(
+  "/:id",
+  [autenticacaoJWT, verificaProprioUsuario],
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const usuario = await Usuario.findByPk(id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
+      const usuario = await Usuario.findByPk(id);
+      if (!usuario) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      await usuario.destroy();
+      res.json({ message: "Usuário deletado com sucesso" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    await usuario.destroy();
-    res.json({ message: "Usuário deletado com sucesso" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
-});
+);
 
 module.exports = router;

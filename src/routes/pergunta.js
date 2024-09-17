@@ -1,84 +1,99 @@
-const express = require('express');
+const express = require("express");
+const { Pergunta, Questionario } = require("../models");
+const autenticacaoJWT = require("../middlewares/autenticacaoJWT");
 const router = express.Router();
-const { Pergunta, Questionario } = require('../models');
+const yup = require("yup");
 
-// Criar Pergunta
-router.post('/', async (req, res) => {
-  try {
-    const pergunta = await Pergunta.create(req.body);
-    res.status(201).json(pergunta);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
+// Validação de perguntas com Yup
+const perguntaSchema = yup.object({
+  descricao: yup.string().required(),
+  tipo: yup.string().oneOf(["multiplaEscolha", "verdadeiroOuFalso"]).required(),
+  opcoes: yup.array().when("tipo", {
+    is: "multiplaEscolha",
+    then: yup.array().of(yup.string().required()).min(2),
+    otherwise: yup.array().notRequired(),
+  }),
 });
 
-// Obter Perguntas
-router.get('/', async (req, res) => {
-  try {
-    const perguntas = await Pergunta.findAll({
-      include: {
-        model: Questionario,
-        as: 'questionario'
-      }
-    });
-    res.status(200).json(perguntas);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+/**
+ * @swagger
+ * tags:
+ *   name: Perguntas
+ *   description: Operações relacionadas a perguntas
+ */
 
-// Obter Pergunta por ID
-router.get('/:id', async (req, res) => {
+/**
+ * @swagger
+ * /questionarios/{id}/perguntas:
+ *   post:
+ *     summary: Adiciona perguntas a um questionário existente
+ *     description: Adiciona perguntas ao questionário por ID. Requer autenticação JWT.
+ *     tags: [Perguntas]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do questionário
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               perguntas:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     descricao:
+ *                       type: string
+ *                     tipo:
+ *                       type: string
+ *                       enum: [multiplaEscolha, verdadeiroOuFalso]
+ *                     opcoes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *     responses:
+ *       201:
+ *         description: Perguntas adicionadas com sucesso
+ *       404:
+ *         description: Questionário não encontrado
+ *       400:
+ *         description: Erro de validação
+ *       401:
+ *         description: Não autorizado, JWT inválido ou ausente
+ */
+
+// Adicionar perguntas ao questionário
+router.post("/:id/perguntas", autenticacaoJWT, async (req, res) => {
   try {
-    const pergunta = await Pergunta.findByPk(req.params.id, {
-      include: {
-        model: Questionario,
-        as: 'questionario'
-      }
-    });
-    if (pergunta) {
-      res.status(200).json(pergunta);
-    } else {
-      res.status(404).json({ error: 'Pergunta não encontrada' });
+    const { id } = req.params;
+    const { perguntas } = req.body;
+
+    // Verificar se o questionário existe
+    const questionario = await Questionario.findByPk(id);
+    if (!questionario) {
+      return res.status(404).json({ error: "Questionário não encontrado" });
     }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
-// Atualizar Pergunta
-router.put('/:id', async (req, res) => {
-  try {
-    const [updated] = await Pergunta.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedPergunta = await Pergunta.findByPk(req.params.id, {
-        include: {
-          model: Questionario,
-          as: 'questionario'
-        }
-      });
-      res.status(200).json(updatedPergunta);
-    } else {
-      res.status(404).json({ error: 'Pergunta não encontrada' });
-    }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+    // Criar e associar perguntas ao questionário
+    const perguntasCriadas = await Promise.all(
+      perguntas.map(async (pergunta) => {
+        await perguntaSchema.validate(pergunta); // Validação da pergunta
+        return Pergunta.create({
+          descricao: pergunta.descricao,
+          tipo: pergunta.tipo,
+          opcoes: pergunta.opcoes,
+          questionario_id: id,  // Associar ao questionário
+        });
+      })
+    );
 
-// Deletar Pergunta
-router.delete('/:id', async (req, res) => {
-  try {
-    const deleted = await Pergunta.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      res.status(204).json();
-    } else {
-      res.status(404).json({ error: 'Pergunta não encontrada' });
-    }
+    res.status(201).json(perguntasCriadas);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
